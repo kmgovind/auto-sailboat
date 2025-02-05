@@ -1,25 +1,34 @@
-function run_simulation()
-    % Initialize parameters
-    time_span = 0:0.1:60; % Simulation time from 0 to 60 seconds
-    initial_conditions = [0; 0; 0; 0]; % [x_position; y_position; heading; sail_angle]
-    
-    % Load models
-    simplified_model = @simplified_model;
-    high_fidelity_model = @high_fidelity_model;
+function run_simulation(model_name, wind_model_name, current_model_name)
+    % run_simulation.m
+    % This script runs a simulation for the specified sailboat model in the given environment.
 
-    % Set up environmental conditions
-    wind_strength = 10; % Example wind strength
-    wind_direction = 45; % Example wind direction in degrees
-    current_strength = 2; % Example ocean current strength
-    current_direction = 90; % Example current direction in degrees
+    % Define simulation parameters
+    time_span = [0 100]; % Simulation time span
+    initial_conditions = [0; 0; 1; 0; 0]; % Initial state [x; y; velocity; heading; sail_angle]
 
-    % Run simulations
-    [t_simplified, state_simplified] = ode45(@(t, state) simplified_model(t, state, wind_strength, wind_direction, current_strength, current_direction), time_span, initial_conditions);
-    [t_high_fidelity, state_high_fidelity] = ode45(@(t, state) high_fidelity_model(t, state, wind_strength, wind_direction, current_strength, current_direction), time_span, initial_conditions);
+    % Define environmental conditions
+    wind_strength = 5; % Example wind strength
+    wind_direction = pi/4; % Example wind direction (45 degrees)
+    current_strength = 2; % Example current strength
+    current_direction = pi/2; % Example current direction (90 degrees)
 
-    % Visualize results
-    visualize_results(t_simplified, state_simplified, 'Simplified Model');
-    visualize_results(t_high_fidelity, state_high_fidelity, 'High Fidelity Model');
+    % Run the specified model
+    if strcmp(model_name, 'simplified_model')
+        [t, state] = ode45(@(t, state) simplified_model(t, state, wind_strength, wind_direction, current_strength, current_direction), time_span, initial_conditions);
+        model_title = 'Simplified Model Trajectory';
+    elseif strcmp(model_name, 'high_fidelity_model')
+        [t, state] = ode45(@(t, state) high_fidelity_model(t, state, wind_strength, wind_direction, current_strength, current_direction), time_span, initial_conditions);
+        model_title = 'High Fidelity Model Trajectory';
+    else
+        error('Unknown model name.');
+    end
+
+    % Plot results
+    figure;
+    plot(state(:, 1), state(:, 2));
+    title(model_title);
+    xlabel('X Position');
+    ylabel('Y Position');
 end
 
 function visualize_results(t, state, model_name)
