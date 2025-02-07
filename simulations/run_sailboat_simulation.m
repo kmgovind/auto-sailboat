@@ -3,10 +3,8 @@ function run_sailboat_simulation()
     time_span = [0 100]; % Simulation time span
     initial_conditions = [0; 0; 0; 1; 0]; % Initial state [x; y; theta; v; omega]
 
-    % Define model parameters
-    params = struct('p1', 0.1, 'p2', 0.01, 'p3', 0.1, 'p6', 0.5, 'p7', 0.3, ...
-                    'p8', 0.2, 'p9', 1.5, 'p10', 0.5, 'p11', 0.1, ...
-                    'g_s', 1.0, 'g_r', 0.5);
+    % Get model parameters
+    params = define_params();
 
     % Define control inputs
     controls = struct('delta_s', pi/6, 'delta_r', pi/12);

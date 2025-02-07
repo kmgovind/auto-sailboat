@@ -14,10 +14,10 @@ addpath(fullfile(projectRoot, 'environment'));
 addpath(fullfile(projectRoot, 'controllers'));
 addpath(fullfile(projectRoot, 'simulations'));
 addpath(fullfile(projectRoot, 'utils'));
+addpath(fullfile(projectRoot, 'results'));
 
 % Display a message indicating successful initialization
 disp('Workspace initialized. All necessary paths have been added.');
 
 % Sample script to run a simplified model in a specific environment
-disp('To run a simulation, use the following command:');
-disp('run_simulation(''simplified_model'', ''wind_model'', ''ocean_current_model'');');
+disp('Select a script from the `simulations` directory to run a simulation.');

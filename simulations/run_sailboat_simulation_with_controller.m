@@ -5,10 +5,8 @@ clear;clc;close all;
 time_span = [0 100]; % Simulation time span
 initial_conditions = [0; 0; 0; 0; 0]; % Initial state [x; y; theta; v; omega]
 
-% Define model parameters
-params = struct('p1', 0.1, 'p2', 0.01, 'p3', 0.1, 'p4', 0.5, 'p5', 0.2, ...
-                'p6', 0.5, 'p7', 0.3, 'p8', 0.2, 'p9', 1.5, 'p10', 0.5, ...
-                'p11', 0.1);
+% Get model parameters
+params = define_params();
 
 % Define ocean currents
 currents = struct('v_cx', 0.5, 'v_cy', 1.3);
@@ -80,3 +78,33 @@ title('Sail Commands Over Time');
 xlabel('Time (s)');
 ylabel('Sail Angle (rad)');
 grid on;
+
+% Create an animation of the sailboat dynamics
+figure;
+filename = 'results/sailboat_simulation_w_control.gif';
+for i = 1:length(t)
+    plot(state(1:i, 1), state(1:i, 2), 'b', 'LineWidth', 2);
+    hold on;
+    quiver(state(i, 1), state(i, 2), cos(state(i, 3)), sin(state(i, 3)), 'r', 'LineWidth', 2);
+    quiver(state(i, 1), state(i, 2), currents.v_cx, currents.v_cy, 'g', 'LineWidth', 2);
+    hold off;
+    title('Sailboat Dynamics');
+    xlabel('X Position');
+    ylabel('Y Position');
+    legend('Sailboat Trajectory', 'Sailboat Heading', 'Ocean Current', 'Location', 'best');
+    grid on;
+    axis([x_min x_max y_min y_max]);
+    drawnow;
+    
+    % Capture the plot as an image
+    frame = getframe(gcf);
+    im = frame2im(frame);
+    [imind, cm] = rgb2ind(im, 256);
+    
+    % Write to the GIF File
+    if i == 1
+        imwrite(imind, cm, filename, 'gif', 'Loopcount', inf, 'DelayTime', dt);
+    else
+        imwrite(imind, cm, filename, 'gif', 'WriteMode', 'append', 'DelayTime', dt);
+    end
+end
