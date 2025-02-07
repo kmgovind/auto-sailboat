@@ -3,7 +3,7 @@ clear;clc;close all;
 
 % Define simulation parameters
 time_span = [0 100]; % Simulation time span
-initial_conditions = [0; 0; 0; 0; 0]; % Initial state [x; y; theta; v; omega]
+initial_conditions = [0; 0; 0; 10; 0]; % Initial state [x; y; theta; v; omega]
 
 % Get model parameters
 params = define_params();
