@@ -81,7 +81,14 @@ grid on;
 
 % Create an animation of the sailboat dynamics
 figure;
-filename = 'results/sailboat_simulation_w_control.gif';
+
+% Define the results directory
+results_dir = fullfile(fileparts(mfilename('fullpath')), 'results');
+if ~exist(results_dir, 'dir')
+    mkdir(results_dir);
+end
+filename = fullfile(results_dir, 'sailboat_simulation_w_control.gif');
+
 for i = 1:length(t)
     plot(state(1:i, 1), state(1:i, 2), 'b', 'LineWidth', 2);
     hold on;

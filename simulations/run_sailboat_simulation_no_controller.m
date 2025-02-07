@@ -57,7 +57,14 @@ grid on;
 
 % Create an animation of the sailboat dynamics
 figure;
-filename = 'results/sailboat_simulation_no_control.gif';
+
+% Define the results directory 
+results_dir = fullfile(fileparts(mfilename('fullpath')), 'results');
+if ~exist(results_dir, 'dir')
+    mkdir(results_dir);
+end
+filename = fullfile(results_dir, 'sailboat_simulation_no_control.gif');
+
 for i = 1:length(t)
     plot(state(1:i, 1), state(1:i, 2), 'b', 'LineWidth', 2);
     hold on;
@@ -79,8 +86,8 @@ for i = 1:length(t)
     
     % Write to the GIF File
     if i == 1
-        imwrite(imind, cm, filename, 'gif', 'Loopcount', inf, 'DelayTime', 0.25);
+        imwrite(imind, cm, filename, 'gif', 'Loopcount', inf, 'DelayTime', 0.2);
     else
-        imwrite(imind, cm, filename, 'gif', 'WriteMode', 'append', 'DelayTime', 0.25);
+        imwrite(imind, cm, filename, 'gif', 'WriteMode', 'append', 'DelayTime', 0.2);
     end
 end
