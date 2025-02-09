@@ -17,7 +17,7 @@ equilibrium_points = solve(eq_conditions, [x, y, heading, velocity, sail_angle])
 A = jacobian(state_dot, state);
 B = jacobian(state_dot, control_input_sym);
 
-% Evaluate Jacobians at the equilibrium point
+% Jacobians at the equilibrium point
 A_eq = subs(A, state, [equilibrium_points.x, equilibrium_points.y, equilibrium_points.heading, equilibrium_points.velocity, equilibrium_points.sail_angle]);
 B_eq = subs(B, state, [equilibrium_points.x, equilibrium_points.y, equilibrium_points.heading, equilibrium_points.velocity, equilibrium_points.sail_angle]);
 
