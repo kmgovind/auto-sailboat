@@ -18,6 +18,14 @@ wind = struct('a_tw', 2.0, 'psi_tw', pi/4);
 % controls = struct('delta_s', pi/6, 'delta_r', pi/12); % Fixed sail and rudder angles
 controls = struct('delta_s', 0, 'delta_r', 0); % Fixed sail and rudder angles
 
+% Run the linearization calculations
+[A, B] = linearize_model(initial_conditions, controls, params, wind, currents);
+
+% Display the linearized matrices
+disp('Linearized matrix A:');
+disp(A);
+disp('Linearized matrix B:');
+disp(B);
 
 % Run the simulation without controller
 [t, state] = ode45(@(t, state) sailboat_dynamics(t, state, params, controls, wind, currents), time_span, initial_conditions);
