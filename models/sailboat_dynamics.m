@@ -33,6 +33,10 @@ function dstate = sailboat_dynamics(t, state, params, controls, wind, currents)
     a_tw = interp1(wind.t, wind.a_tw, t, 'linear', 'extrap');
     psi_tw = interp1(wind.t, wind.psi_tw, t, 'linear', 'extrap');
 
+    % % Adjust heading to make 0 point north
+    % theta = theta - pi/2;
+    % psi_tw = psi_tw - pi/2;
+
     % --- Compute Apparent Wind (Wind Relative to Boat Motion) ---
     a_aw = sqrt((a_tw * cos(psi_tw - theta) - v)^2 + (a_tw * sin(psi_tw - theta))^2);
     psi_aw = atan2(a_tw * sin(psi_tw - theta), a_tw * cos(psi_tw - theta) - v);
