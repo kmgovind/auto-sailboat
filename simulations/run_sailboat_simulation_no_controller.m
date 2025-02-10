@@ -27,6 +27,9 @@ disp(A);
 disp('Linearized matrix B:');
 disp(B);
 
+stability_analysis(A);
+stability_analysis(B);
+
 % Run the simulation without controller
 [t, state] = ode45(@(t, state) sailboat_dynamics(t, state, params, controls, wind, currents), time_span, initial_conditions);
 
