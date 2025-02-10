@@ -5,10 +5,11 @@ function stability_analysis(A)
     disp(eigenvalues);
 
     % Analyze stability based on eigenvalues
-    % If all eigenvalues have negative real parts, the system is stable
-    stable = all(real(eigenvalues) < 0);
-    if stable
-        disp('The system is stable.');
+    real_parts = real(eigenvalues);
+    if all(real_parts < 0)
+        disp('The system is asymptotically stable.');
+    elseif all(real_parts <= 0) && any(real_parts == 0)
+        disp('The system is marginally stable.');
     else
         disp('The system is unstable.');
     end

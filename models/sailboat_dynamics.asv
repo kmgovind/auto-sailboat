@@ -51,18 +51,24 @@ function dstate = sailboat_dynamics(t, state, params, controls, wind, currents)
 
     % Compute Angle of Attack (AoA) based on fixed sail
     alpha_radians = psi_aw - delta_s;
-    display(alpha_degs);
     alpha_degs = alpha_radians * (180/pi); % Convert to degrees
-    % Clamp AoA to prevent extreme Cl/Cd values
-    alpha_degs = max(min(alpha_degs, 20), -20);
-    % display(alpha_degs);
-    % display(alpha_data);
-    % display(Cl_data);
-    % display(Cd_data);
 
-    % Interpolate Cl and Cd from airfoil data
+    % % Clamp AoA to prevent extreme Cl/Cd values
+    % alpha_degs = max(min(alpha_degs, 20), -20); 
+    % 
+    % % Interpolate Cl and Cd from airfoil data
+    % Cl = interp1(alpha_data, Cl_data, alpha_degs, 'linear', 'extrap');
+    % Cd = interp1(alpha_data, Cd_data, alpha_degs, 'linear', 'extrap'); 
+
+% Ensure interpolation is only performed with numeric data
+if isa(alpha_degs, 'sym')
+    Cl = sym('Cl'); % Placeholder symbolic variable
+    Cd = sym('Cd'); % Placeholder symbolic variable
+else
     Cl = interp1(alpha_data, Cl_data, alpha_degs, 'linear', 'extrap');
     Cd = interp1(alpha_data, Cd_data, alpha_degs, 'linear', 'extrap');
+end
+
 
     % Compute Lift (L) and Drag (D) forces from the sail
     L = damping_factor * 0.5 * air_density * a_aw^2 * sail_area * Cl;

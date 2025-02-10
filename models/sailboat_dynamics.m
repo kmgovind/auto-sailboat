@@ -56,9 +56,18 @@ function dstate = sailboat_dynamics(t, state, params, controls, wind, currents)
     % Clamp AoA to prevent extreme Cl/Cd values
     alpha_degs = max(min(alpha_degs, 20), -20); 
 
-    % Interpolate Cl and Cd from airfoil data
-    Cl = interp1(alpha_data, Cl_data, alpha_degs, 'linear', 'extrap');
-    Cd = interp1(alpha_data, Cd_data, alpha_degs, 'linear', 'extrap');
+    % % Interpolate Cl and Cd from airfoil data
+    % Cl = interp1(alpha_data, Cl_data, alpha_degs, 'linear', 'extrap');
+    % Cd = interp1(alpha_data, Cd_data, alpha_degs, 'linear', 'extrap'); 
+
+    % Ensure interpolation is only performed with numeric data
+    if isa(alpha_degs, 'sym')
+        Cl = sym('Cl'); % Placeholder symbolic variable
+        Cd = sym('Cd'); % Placeholder symbolic variable
+    else
+        Cl = interp1(alpha_data, Cl_data, alpha_degs, 'linear', 'extrap');
+        Cd = interp1(alpha_data, Cd_data, alpha_degs, 'linear', 'extrap');
+    end
 
     % Compute Lift (L) and Drag (D) forces from the sail
     L = damping_factor * 0.5 * air_density * a_aw^2 * sail_area * Cl;
