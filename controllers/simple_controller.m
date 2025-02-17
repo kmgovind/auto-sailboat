@@ -1,38 +1,39 @@
-function controls = simple_controller(desired_heading, current_heading, wind_direction, boat_speed, wind_speed, dt)
-    % PID gains for rudder control
-    persistent prev_error integral_error;
-    if isempty(prev_error)
-        prev_error = 0;
-        integral_error = 0;
-    end
-    
-    Kp = 1.0;   % Proportional gain
-    Ki = 0.1;   % Integral gain
-    Kd = 0.5;   % Derivative gain
-    
-    % Compute heading error
-    heading_error = wrapToPi(desired_heading - current_heading);
-    integral_error = integral_error + heading_error * dt;
-    derivative_error = (heading_error - prev_error) / dt;
-    prev_error = heading_error;
-    
-    % Compute rudder angle using PID
-    delta_r = Kp * heading_error + Ki * integral_error + Kd * derivative_error;
-    
-    % Limit rudder angle
-    max_rudder_angle = pi/6;
-    delta_r = max(min(delta_r, max_rudder_angle), -max_rudder_angle);
-    
-    % Compute apparent wind angle
-    AWA = atan2(sin(wind_direction - current_heading), cos(wind_direction - current_heading) - boat_speed/wind_speed);
-    
-    % Compute sail angle using optimal trim function
-    delta_s = (pi/2) * cos(AWA);
-    
-    % Limit sail angle
-    max_sail_angle = pi/3;
-    delta_s = max(min(delta_s, max_sail_angle), 0);
-    
+function [delta_r, delta_s] = simple_controller(x, y, theta_b, v_b, x_w, y_w, V_w, psi_w, V_c, psi_c)
+    % Constants
+    delta_s_min = 0; % Minimum sail angle
+    delta_s_max = pi/3; % Maximum sail angle
+    delta_r_min = -pi/6; % Minimum rudder angle
+    delta_r_max = pi/6; % Maximum rudder angle
+    Kp = 1.0; % Proportional gain for rudder control
+
+    % Compute the desired heading to the waypoint
+    theta_des = atan2(y_w - y, x_w - x);
+
+    % Compute the effective velocity of the boat
+    V_eff_x = v_b * cos(theta_b) + V_c * cos(psi_c);
+    V_eff_y = v_b * sin(theta_b) + V_c * sin(psi_c);
+    V_eff = [V_eff_x; V_eff_y];
+
+    % Compute the apparent wind from the true wind velocity
+    V_aw_x = V_w * cos(psi_w) - V_eff_x;
+    V_aw_y = V_w * sin(psi_w) - V_eff_y;
+    V_aw = [V_aw_x; V_aw_y];
+
+    % Compute the apparent wind angle
+    psi_aw = atan2(V_aw_y, V_aw_x);
+
+    % Compute the sail angle relative to the apparent wind
+    delta_s = 0.5 * (psi_aw - theta_b);
+    delta_s = max(delta_s_min, min(delta_s_max, delta_s));
+
+    % Compute the heading error
+    e_theta = wrapToPi(theta_des - theta_b);
+
+    % Compute the rudder angle using a proportional controller
+    delta_r = Kp * e_theta;
+    delta_r = max(delta_r_min, min(delta_r_max, delta_r));
+
     % Return control inputs
-    controls = struct('delta_s', delta_s, 'delta_r', delta_r);
+    delta_r = wrapToPi(delta_r);
+    delta_s = wrapToPi(delta_s);
 end
