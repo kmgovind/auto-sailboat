@@ -29,18 +29,19 @@ function dstate = sailboat_dynamics(t, state, params, controls, wind, currents)
     delta_s = controls.delta_s; % Fixed sail angle
     delta_r = controls.delta_r; % Fixed rudder angle
 
-    % Extract environmental conditions
-    a_tw = wind.a_tw; % True wind speed
-    psi_tw = wind.psi_tw; % True wind direction
-    v_cx = currents.v_cx; % Ocean current in x-direction
-    v_cy = currents.v_cy; % Ocean current in y-direction
+    % Interpolate wind speed and direction at the current time
+    a_tw = interp1(wind.t, wind.a_tw, t, 'linear', 'extrap');
+    psi_tw = interp1(wind.t, wind.psi_tw, t, 'linear', 'extrap');
+
+    % % Adjust heading to make 0 point north
+    % theta = theta - pi/2;
+    % psi_tw = psi_tw - pi/2;
 
     % --- Compute Apparent Wind (Wind Relative to Boat Motion) ---
     a_aw = sqrt((a_tw * cos(psi_tw - theta) - v)^2 + (a_tw * sin(psi_tw - theta))^2);
     psi_aw = atan2(a_tw * sin(psi_tw - theta), a_tw * cos(psi_tw - theta) - v);
 
     % --- NACA 0015 Airfoil Calculations ---
-    % Load airfoil data only once
     persistent alpha_data Cl_data Cd_data
     if isempty(alpha_data)
         data = readtable('xf-naca0015-il-50000.csv');
@@ -49,9 +50,10 @@ function dstate = sailboat_dynamics(t, state, params, controls, wind, currents)
         Cd_data = data.Cd;
     end
 
-    % Compute Angle of Attack (AoA) based on fixed sail
+    % Compute Angle of Attack (AoA)
     alpha_radians = psi_aw - delta_s;
-    alpha_degs = alpha_radians * (180/pi); % Convert to degrees
+    alpha_degs = alpha_radians * (180/pi);
+    alpha_degs = max(min(alpha_degs, 20), -20); % Clamp AoA
 
     % Clamp AoA to prevent extreme Cl/Cd values
     alpha_degs = max(min(alpha_degs, 20), -20); 
@@ -69,35 +71,26 @@ function dstate = sailboat_dynamics(t, state, params, controls, wind, currents)
         Cd = interp1(alpha_data, Cd_data, alpha_degs, 'linear', 'extrap');
     end
 
-    % Compute Lift (L) and Drag (D) forces from the sail
+    % Compute Lift (L) and Drag (D) forces
     L = damping_factor * 0.5 * air_density * a_aw^2 * sail_area * Cl;
     D = 0.5 * air_density * a_aw^2 * sail_area * Cd;
 
-    % Convert Lift and Drag to boat-aligned components
-    lift_angle = psi_aw + pi/2; % Lift is perpendicular to apparent wind
-    drag_angle = psi_aw;         % Drag is aligned with apparent wind
+    % Convert forces to boat-aligned components
+    lift_angle = psi_aw + pi/2;
+    drag_angle = psi_aw;
 
     Fx_lift = L * cos(lift_angle);
     Fy_lift = L * sin(lift_angle);
-
     Fx_drag = D * cos(drag_angle);
     Fy_drag = D * sin(drag_angle);
 
-    % Compute net wind force acting on the boat
-    wind_force = [Fx_lift - Fx_drag;
-                  Fy_lift - Fy_drag];
+    wind_force = [Fx_lift - Fx_drag; Fy_lift - Fy_drag];
 
-    % --- Compute Sail and Rudder Forces ---
-    g_s = wind_force(1) * sin(delta_s - psi_aw); % Sail force contribution
-    g_r = D * sin(delta_r); % Rudder force contribution
+    dx = v * cos(theta) + p1 * a_tw * cos(psi_tw) + currents.v_cx;
+    dy = v * sin(theta) + p1 * a_tw * sin(psi_tw) + currents.v_cy;
+    dtheta = heading_damping * omega;
+    dv = (wind_force(1) - p2 * v^2) / p9;
+    domega = (wind_force(2) - p3 * omega * v) / p10;
 
-    % --- State-space representation ---
-    dx = v * cos(theta) + p1 * a_tw * cos(psi_tw) + v_cx; % x-position
-    dy = v * sin(theta) + p1 * a_tw * sin(psi_tw) + v_cy; % y-position
-    dtheta = heading_damping * omega; % Smoothed heading change
-    dv = (g_s - g_r * p11 - p2 * v^2) / p9; % Boat velocity change
-    domega = (g_s * (p6 - p7 * cos(delta_s)) - g_r * p8 * cos(delta_r) - p3 * omega * v) / p10; % Angular acceleration
-
-    % --- Return state derivatives ---
     dstate = [dx; dy; dtheta; dv; domega];
 end
