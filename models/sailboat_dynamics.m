@@ -33,13 +33,14 @@ function dstate = sailboat_dynamics(t, state, params, controls, wind, currents)
     a_tw = interp1(wind.t, wind.a_tw, t, 'linear', 'extrap');
     psi_tw = interp1(wind.t, wind.psi_tw, t, 'linear', 'extrap');
 
-    % % Adjust heading to make 0 point north
-    % theta = theta - pi/2;
-    % psi_tw = psi_tw - pi/2;
+    % Adjust heading to make 0 point north
+    theta = mod(theta + pi/2, 2*pi); % Adjust heading to point north
+    psi_tw = mod(psi_tw + pi/2, 2*pi); % Adjust wind direction to match new heading reference
 
     % --- Compute Apparent Wind (Wind Relative to Boat Motion) ---
     a_aw = sqrt((a_tw * cos(psi_tw - theta) - v)^2 + (a_tw * sin(psi_tw - theta))^2);
     psi_aw = atan2(a_tw * sin(psi_tw - theta), a_tw * cos(psi_tw - theta) - v);
+    psi_aw = mod(psi_aw, 2*pi); % Ensure angle is within [0, 2*pi]
 
     % --- NACA 0015 Airfoil Calculations ---
     persistent alpha_data Cl_data Cd_data
@@ -55,21 +56,9 @@ function dstate = sailboat_dynamics(t, state, params, controls, wind, currents)
     alpha_degs = alpha_radians * (180/pi);
     alpha_degs = max(min(alpha_degs, 20), -20); % Clamp AoA
 
-    % Clamp AoA to prevent extreme Cl/Cd values
-    alpha_degs = max(min(alpha_degs, 20), -20); 
-
-    % % Interpolate Cl and Cd from airfoil data
-    % Cl = interp1(alpha_data, Cl_data, alpha_degs, 'linear', 'extrap');
-    % Cd = interp1(alpha_data, Cd_data, alpha_degs, 'linear', 'extrap'); 
-
-    % Ensure interpolation is only performed with numeric data
-    if isa(alpha_degs, 'sym')
-        Cl = sym('Cl'); % Placeholder symbolic variable
-        Cd = sym('Cd'); % Placeholder symbolic variable
-    else
-        Cl = interp1(alpha_data, Cl_data, alpha_degs, 'linear', 'extrap');
-        Cd = interp1(alpha_data, Cd_data, alpha_degs, 'linear', 'extrap');
-    end
+    % Interpolate Cl and Cd from airfoil data
+    Cl = interp1(alpha_data, Cl_data, alpha_degs, 'linear', 'extrap');
+    Cd = interp1(alpha_data, Cd_data, alpha_degs, 'linear', 'extrap');
 
     % Compute Lift (L) and Drag (D) forces
     L = damping_factor * 0.5 * air_density * a_aw^2 * sail_area * Cl;
@@ -86,11 +75,22 @@ function dstate = sailboat_dynamics(t, state, params, controls, wind, currents)
 
     wind_force = [Fx_lift - Fx_drag; Fy_lift - Fy_drag];
 
+    % Compute state derivatives
     dx = v * cos(theta) + p1 * a_tw * cos(psi_tw) + currents.v_cx;
     dy = v * sin(theta) + p1 * a_tw * sin(psi_tw) + currents.v_cy;
     dtheta = heading_damping * omega;
     dv = (wind_force(1) - p2 * v^2) / p9;
     domega = (wind_force(2) - p3 * omega * v) / p10;
 
+    % Check for division by zero or near zero
+    if abs(p9) < 1e-6 || abs(p10) < 1e-6
+        warning('Division by zero or near zero detected. Pausing simulation for debugging.');
+        pause;
+    end
+
+    % Normalize theta to be within [0, 2*pi]
+    theta = mod(theta, 2*pi);
+
+    % Return state derivatives
     dstate = [dx; dy; dtheta; dv; domega];
 end
