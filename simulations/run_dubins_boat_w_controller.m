@@ -51,11 +51,12 @@ if ~exist(results_dir, 'dir')
 end
 
 % Plot results
+
 figure;
 plot(trajectory(:, 1), trajectory(:, 2));
 hold on;
 scatter(waypoints(:, 1), waypoints(:, 2), 'r', 'filled');
-legend('Trajectory', 'Waypoints');
+legend('Trajectory', 'Waypoints', 'Location', 'southeast');
 title('Dubins Boat Trajectory');
 xlabel('X Position');
 ylabel('Y Position');
