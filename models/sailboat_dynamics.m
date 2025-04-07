@@ -7,10 +7,10 @@ function dstate = sailboat_dynamics(t, state, params, controls, wind, currents)
     omega = state(5); % Angular velocity (yaw rate)
 
     % Constants
-    air_density = 1.225; % kg/m^3
-    sail_area = 0.5; % m^2 (adjust as needed)
-    damping_factor = 0.7; % Damping factor to stabilize forces
-    heading_damping = 0.5; % Reduce heading oscillations
+    air_density = 1.225;    % kg/m^3
+    sail_area = 0.5;        % m^2 (adjust as needed)
+    damping_factor = 0.7;   % Damping factor to stabilize forces
+    heading_damping = 0.5;  % Reduce heading oscillations
 
     % Extract model parameters
     p1 = params.p1;
@@ -26,16 +26,20 @@ function dstate = sailboat_dynamics(t, state, params, controls, wind, currents)
     p11 = params.p11;
 
     % Extract control inputs
-    delta_s = controls.delta_s; % Fixed sail angle
-    delta_r = controls.delta_r; % Fixed rudder angle
+    delta_s = controls.delta_s; % Sail angle
+    delta_r = controls.delta_r; % Rudder angle
 
     % Interpolate wind speed and direction at the current time
     a_tw = interp1(wind.t, wind.a_tw, t, 'linear', 'extrap');
     psi_tw = interp1(wind.t, wind.psi_tw, t, 'linear', 'extrap');
 
+    % Interpolate current components at the current time
+    v_cx_interp = interp1(currents.t, currents.v_cx, t, 'linear', 'extrap');
+    v_cy_interp = interp1(currents.t, currents.v_cy, t, 'linear', 'extrap');
+
     % Adjust heading to make 0 point north
-    theta = mod(theta + pi/2, 2*pi); % Adjust heading to point north
-    psi_tw = mod(psi_tw + pi/2, 2*pi); % Adjust wind direction to match new heading reference
+    theta = mod(theta + pi/2, 2*pi);   % Adjust heading to point north
+    psi_tw = mod(psi_tw + pi/2, 2*pi);   % Adjust wind direction to match new heading reference
 
     % --- Compute Apparent Wind (Wind Relative to Boat Motion) ---
     a_aw = sqrt((a_tw * cos(psi_tw - theta) - v)^2 + (a_tw * sin(psi_tw - theta))^2);
@@ -75,9 +79,9 @@ function dstate = sailboat_dynamics(t, state, params, controls, wind, currents)
 
     wind_force = [Fx_lift - Fx_drag; Fy_lift - Fy_drag];
 
-    % Compute state derivatives
-    dx = v * cos(theta) + p1 * a_tw * cos(psi_tw) + currents.v_cx;
-    dy = v * sin(theta) + p1 * a_tw * sin(psi_tw) + currents.v_cy;
+    % Compute state derivatives using the interpolated current components
+    dx = v * cos(theta) + p1 * a_tw * cos(psi_tw) + v_cx_interp;
+    dy = v * sin(theta) + p1 * a_tw * sin(psi_tw) + v_cy_interp;
     dtheta = heading_damping * omega;
     dv = (wind_force(1) - p2 * v^2) / p9;
     domega = (wind_force(2) - p3 * omega * v) / p10;
@@ -91,6 +95,6 @@ function dstate = sailboat_dynamics(t, state, params, controls, wind, currents)
     % Normalize theta to be within [0, 2*pi]
     theta = mod(theta, 2*pi);
 
-    % Return state derivatives
+    % Return state derivatives as a column vector
     dstate = [dx; dy; dtheta; dv; domega];
 end
