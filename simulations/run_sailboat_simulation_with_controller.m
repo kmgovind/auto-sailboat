@@ -1,123 +1,117 @@
-function run_sailboat_simulation_with_controller()
-    % Ready workspace
-    clc; close all;
+% Ready workspace
+clear;clc;close all;
 
-    % Simulation parameters
-    time_span = [0 3000]; % run 300s for enough time
-    % dt = 0.1;
-    initial_conditions = [100; 0; pi/2; 0; 0];  % [x; y; theta; v; omega]
+% Define simulation parameters
+time_span = [0 100]; % Simulation time span
+initial_conditions = [0; 0; 0; 0; 0]; % Initial state [x; y; theta; v; omega]
 
-    % Model params
-    params = define_params();
+% Get model parameters
+params = define_params();
 
-    % Ocean currents
-    currents = struct('v_cx', 0.0, 'v_cy', 0.0);
+% Define ocean currents
+currents = struct('v_cx', 0.5, 'v_cy', 1.3);
 
-    % Set wind to 7 m/s from West (π)
-    wind = struct( ...
-        't',       [time_span(1), time_span(end)], ...  % minimal time array
-        'a_tw',    [7, 7],             ...  % always 7 m/s
-        'psi_tw',  [pi, pi]            ...  % always pi (west -> east)
-    );
+% Define wind conditions
+wind = struct('a_tw', 2.0, 'psi_tw', pi/4);
 
-    % Waypoints
-    waypoints = [
-         0  -100
-         0     0
-        -100 -400
-         -50 -600
-        -100 -200
-        -150  100
-    ];
+% Desired heading
+desired_heading = pi/2; % 90 degrees
 
-    [t, state] = ode45(@(t, st) sailboat_dynamics(t, st, params, ...
-                                melin_controller_wrapper(st, waypoints), ...
-                                wind, currents), ...
-                       time_span, initial_conditions);
+% Time step for the simulation
+dt = 0.1;
 
-    % --- Plot Final Results ---
-    % **Sailboat Trajectory Plot**
-    figure;
-    hold on;
-    plot(state(:,1), state(:,2), 'b', 'LineWidth', 2);
-    plot(waypoints(:,1), waypoints(:,2), 'ks', 'MarkerFaceColor','y', 'MarkerSize', 8); % Waypoints
-    plot(100, 0, 'go', 'MarkerSize', 10, 'MarkerFaceColor', 'g'); % Start Position
-    title('Sailboat Trajectory (Melin Sin-Controller)');
-    xlabel('X Position'); ylabel('Y Position');
-    grid on;
-    legend('Trajectory', 'Waypoints', 'Start');
+% Run the simulation with controller
+[t, state] = ode45(@(t, state) sailboat_dynamics(t, state, params, simple_controller(desired_heading, state(3), wind.psi_tw, state(4), wind.a_tw, dt), wind, currents), time_span, initial_conditions);
 
-    % **Heading Over Time Plot**
-    figure;
-    plot(t, rad2deg(state(:,3)), 'r', 'LineWidth', 2);
-    title('Sailboat Heading Over Time');
-    xlabel('Time (s)'); ylabel('Heading (degrees)');
-    grid on;
-    legend('Boat Heading');
+% Plot results
+figure;
+plot(state(:, 1), state(:, 2));
+title('Sailboat Trajectory');
+xlabel('X Position');
+ylabel('Y Position');
+grid on;
 
-    % **Ocean Currents Plot**
-    figure;
-    x_min = min(state(:,1)); x_max = max(state(:,1));
-    y_min = min(state(:,2)); y_max = max(state(:,2));
-    [X, Y] = meshgrid(linspace(x_min, x_max, 20), linspace(y_min, y_max, 20));
-    U = currents.v_cx * ones(size(X));
-    V = currents.v_cy * ones(size(Y));
+figure;
+plot(t, state(:, 3));
+title('Sailboat Heading Over Time');
+xlabel('Time (s)');
+ylabel('Heading (rad)');
+grid on;
 
-    quiver(X, Y, U, V); hold on;
-    plot(state(:,1), state(:,2), 'r', 'LineWidth', 2);
-    title('Ocean Currents and Sailboat Trajectory');
-    xlabel('X Position'); ylabel('Y Position');
-    grid on;
-    legend('Current Field', 'Sailboat Trajectory');
+% Quiver plot for ocean currents
+x_min = min(state(:, 1));
+x_max = max(state(:, 1));
+y_min = min(state(:, 2));
+y_max = max(state(:, 2));
+[X, Y] = meshgrid(linspace(x_min, x_max, 20), linspace(y_min, y_max, 20));
+U = currents.v_cx * ones(size(X));
+V = currents.v_cy * ones(size(Y));
+figure;
+quiver(X, Y, U, V);
+hold on;
+plot(state(:, 1), state(:, 2), 'r', 'LineWidth', 2);
+title('Ocean Currents and Sailboat Trajectory');
+xlabel('X Position');
+ylabel('Y Position');
+grid on;
 
-    % **Extract Rudder & Sail Commands**
-    rudder_cmd = zeros(length(t),1);
-    sail_cmd   = zeros(length(t),1);
-    for i = 1:length(t)
-       c = melin_controller_wrapper(state(i,:)', waypoints);
-       rudder_cmd(i) = c.delta_r;
-       sail_cmd(i)   = c.delta_s;
-    end
-
-    % **Rudder and Sail Commands Over Time**
-    figure;
-    subplot(2,1,1);
-    plot(t, rudder_cmd, 'LineWidth', 1.5);
-    title('Rudder Commands Over Time');
-    xlabel('Time (s)'); ylabel('Rudder Angle (rad)');
-    grid on;
-    legend('Rudder Angle');
-
-    subplot(2,1,2);
-    plot(t, sail_cmd, 'LineWidth', 1.5);
-    title('Sail Commands Over Time');
-    xlabel('Time (s)'); ylabel('Sail Angle (rad)');
-    grid on;
-    legend('Sail Angle');
-
+% Extract rudder and sail commands over time
+rudder_commands = zeros(length(t), 1);
+sail_commands = zeros(length(t), 1);
+for i = 1:length(t)
+    commands = simple_controller(desired_heading, state(i, 3), wind.psi_tw, state(i, 4), wind.a_tw, dt);
+    [rudder_commands(i), sail_commands(i)] = deal(commands.delta_r, commands.delta_s);
 end
 
-function controls = melin_controller_wrapper(state, waypoints)
+% Plot rudder commands over time
+figure;
+plot(t, rudder_commands);
+title('Rudder Commands Over Time');
+xlabel('Time (s)');
+ylabel('Rudder Angle (rad)');
+grid on;
+
+% Plot sail commands over time
+figure;
+plot(t, sail_commands);
+title('Sail Commands Over Time');
+xlabel('Time (s)');
+ylabel('Sail Angle (rad)');
+grid on;
+
+% Create an animation of the sailboat dynamics
+figure;
+
+% Define the results directory
+results_dir = fullfile(fileparts(mfilename('fullpath')), 'results');
+if ~exist(results_dir, 'dir')
+    mkdir(results_dir);
+end
+filename = fullfile(results_dir, 'sailboat_simulation_w_control.gif');
+
+for i = 1:length(t)
+    plot(state(1:i, 1), state(1:i, 2), 'b', 'LineWidth', 2);
+    hold on;
+    quiver(state(i, 1), state(i, 2), cos(state(i, 3)), sin(state(i, 3)), 'r', 'LineWidth', 2);
+    quiver(state(i, 1), state(i, 2), currents.v_cx, currents.v_cy, 'g', 'LineWidth', 2);
+    hold off;
+    title('Sailboat Dynamics');
+    xlabel('X Position');
+    ylabel('Y Position');
+    legend('Sailboat Trajectory', 'Sailboat Heading', 'Ocean Current', 'Location', 'best');
+    grid on;
+    axis([x_min x_max y_min y_max]);
+    drawnow;
     
-    persistent wp_index
-    if isempty(wp_index)
-        wp_index = 1;
+    % Capture the plot as an image
+    frame = getframe(gcf);
+    im = frame2im(frame);
+    [imind, cm] = rgb2ind(im, 256);
+    
+    % Write to the GIF File
+    if i == 1
+        imwrite(imind, cm, filename, 'gif', 'Loopcount', inf, 'DelayTime', dt);
+    else
+        imwrite(imind, cm, filename, 'gif', 'WriteMode', 'append', 'DelayTime', dt);
     end
-
-    % state is [x; y; theta; v; omega]
-    current_position = state(1:2)';
-    current_heading  = state(3);
-    boat_speed       = state(4);
-
-    % Wind Conditions (as per main script)
-    wind_speed     = 7.0;
-    wind_direction = pi;
-
-    out = melin_controller(current_position, current_heading, ...
-                           boat_speed, wind_speed, wind_direction, ...
-                           waypoints, wp_index);
-
-    controls.delta_r = out.delta_r;
-    controls.delta_s = out.delta_s;
-    wp_index         = out.waypoint_index;  % update for next call
 end
