@@ -1,10 +1,10 @@
 clear;clc;close all;
 % Define simulation parameters
-time_span = [0 100]; % Simulation time span
+time_span = [0 5000]; % Simulation time span
 initial_conditions = [0; 0; 0; 1]; % Initial state [x; y; theta; v]
 
 % Define waypoints
-waypoints = [10, 10; 20, 5; 30, 15; 40, 10];
+waypoints = [0, -100; 0, 0; -100, -400; -50, -600; -100, 200; -150, 100];
 
 % Define wind conditions
 wind = struct('a_tw', 1.0, 'psi_tw', pi/4);
