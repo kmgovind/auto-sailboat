@@ -61,12 +61,17 @@ trajectory = state';
 
 waypoint_counter = 1;
 
+addpath('controllers');
+replanning_module = @replanning_module;
+
 % Run the simulation
 k = 1;
 for i = 1:dt:time_span(end)
     % Get the current waypoint
     waypoint = waypoints(waypoint_counter, :);
 
+    waypoint = replanning_module(state,waypoint,45);
+    
     % Compute the control input using the waypoint controller
     % controls = struct('delta_r', dubins_waypoint_controller(state, waypoint));
     controls = struct('delta_r', lqr_controller(state, waypoint, currents.v_cx(k), currents.v_cy(k)));
