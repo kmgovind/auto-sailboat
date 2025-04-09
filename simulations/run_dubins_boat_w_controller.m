@@ -23,7 +23,8 @@ for i = 1:dt:time_span(end)
     waypoint = waypoints(waypoint_counter, :);
 
     % Compute the control input using the waypoint controller
-    controls = struct('delta_r', dubins_waypoint_controller(state, waypoint));
+    % controls = struct('delta_r', dubins_waypoint_controller(state, waypoint));
+    controls = struct('delta_r', lqr_controller(state, waypoint));
 
     % Integrate the state using the Dubins boat model
     [~, state] = ode45(@(t, state) dubins_boat_model(t, state, controls, wind), [t t+dt], state);

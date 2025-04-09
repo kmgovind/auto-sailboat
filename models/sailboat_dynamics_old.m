@@ -1,4 +1,4 @@
-function dstate = sailboat_dynamics(t, state, params, controls, wind, currents)
+function dstate = sailboat_dynamics_old(t, state, params, controls, wind, currents)
     % Extract state variables
     x = state(1);
     y = state(2);
