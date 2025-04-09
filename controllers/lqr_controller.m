@@ -1,4 +1,4 @@
-function delta_r = lqr_controller(state, waypoint)
+function delta_r = lqr_controller(state, waypoint, v_cx, v_cy)
     % LQR controller for the Dubins boat model to reach a waypoint in minimum time.
     % Inputs:
     %   state    - Current state [x; y; theta; v]
@@ -18,6 +18,8 @@ function delta_r = lqr_controller(state, waypoint)
 
     % Desired heading to the waypoint
     desired_heading = atan2(y_error, x_error);
+
+    v = v + (v_cx^2 + v_cy^2)^(1/2); % Effective velocity
 
     % Linearize the system around the current state
     if v == 0

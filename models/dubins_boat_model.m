@@ -1,4 +1,4 @@
-function dstate = dubins_boat_model(t, state, controls, wind)
+function dstate = dubins_boat_model(t, state, controls, wind, currents)
     % Dubins boat model dynamics with heading constraint
     % state = [x; y; theta; v]
     % controls = [delta_r]
@@ -9,6 +9,10 @@ function dstate = dubins_boat_model(t, state, controls, wind)
     y = state(2);
     theta = state(3); % Boat heading
     v = state(4);     % Boat velocity
+
+    % Interpolate current components at the current time
+    v_cx_interp = interp1(currents.t, currents.v_cx, t, 'linear', 'extrap');
+    v_cy_interp = interp1(currents.t, currents.v_cy, t, 'linear', 'extrap');
 
     % Extract control inputs
     delta_r = controls.delta_r; % Rudder angle
@@ -31,8 +35,8 @@ function dstate = dubins_boat_model(t, state, controls, wind)
     dtheta = delta_r; % No heading constraint
 
     % Compute the state derivatives
-    dx = v * cos(theta);
-    dy = v * sin(theta);
+    dx = v * cos(theta) + v_cx_interp;
+    dy = v * sin(theta) + v_cy_interp;
     dv = 0; % Constant velocity
 
     % Return state derivatives
