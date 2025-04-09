@@ -7,7 +7,7 @@ t = time_span(1):dt:time_span(2); % Time vector
 N = length(t); % Number of time steps
 
 % Initial state [x; y; theta; v; omega]
-initial_conditions = [0; 0; 0; -1; 0];
+initial_conditions = [0; 0; 0; 1; 0];
 
 % Define waypoint
 waypoint = [10, 10];
