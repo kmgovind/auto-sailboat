@@ -1,32 +1,35 @@
-function new_path = replanning_module(current_position, waypoints, obstacles)
-    % This function adjusts the sailboat's path in response to detected obstacles.
+function new_path = replanning_module(current_position, waypoints, wind_direction)
+    % This function follows a racecourse and adjusts the sailboat's path based on the wind direction.
     
     % Parameters:
     % current_position: Current position of the sailboat [x, y]
     % waypoints: Array of waypoints to follow [x1, y1; x2, y2; ...]
-    % obstacles: Array of detected obstacles [x1, y1; x2, y2; ...]
+    % wind_direction: The direction of the wind in degrees (0 to 360)
+    
+    % Assumptions:
+    % wind_direction: Wind direction is given in degrees from north
     
     % Initialize new path as the original waypoints
     new_path = waypoints;
     
-    % Check for obstacles and adjust the path
-    for i = 1:size(obstacles, 1)
-        obstacle = obstacles(i, :);
-        
-        % Calculate distance from current position to obstacle
-        distance_to_obstacle = norm(current_position - obstacle);
-        
-        % If the obstacle is within a certain threshold, replanning is needed
-        if distance_to_obstacle < 5 % threshold distance
-            % Adjust waypoints to avoid the obstacle
-            for j = 1:size(new_path, 1)
-                % Simple avoidance strategy: shift waypoints away from the obstacle
-                direction = new_path(j, :) - obstacle;
-                if norm(direction) > 0
-                    direction = direction / norm(direction); % Normalize direction
-                    new_path(j, :) = new_path(j, :) + 2 * direction; % Shift away
-                end
-            end
+    % Convert wind direction to a unit vector
+    wind_rad = deg2rad(wind_direction);
+    wind_vec = [cos(wind_rad), sin(wind_rad)];
+   
+    % Adjust waypoints based on wind direction
+    for j = 1:size(new_path, 1)
+    to_waypoint = new_path(j, :) - current_position;
+    to_waypoint_norm = to_waypoint / norm(to_waypoint); % Normalize direction to waypoint
+    
+    % Compute dot product manually
+    dot_product = sum(to_waypoint_norm .* wind_vec); % Element-wise multiplication and summation
+    
+    % Check if waypoint is directly upwind
+        if dot_product > cosd(45) % Allow some margin (e.g., 45 degrees)
+            % Adjust waypoint to avoid directly upwind
+            perp_vec = [-wind_vec(2), wind_vec(1)]; % Perpendicular vector to wind direction
+            new_path(j, :) = new_path(j, :) + 2 * perp_vec; % Shift away from upwind direction
         end
     end
+
 end
