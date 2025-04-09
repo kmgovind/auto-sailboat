@@ -13,7 +13,7 @@ function new_path = replanning_module(current_position, waypoints, wind_directio
     new_path = waypoints;
     
     % Convert wind direction to a unit vector
-    wind_rad = deg2rad(wind_direction);
+    wind_rad = deg2rad(wind_direction - 90);
     wind_vec = [cos(wind_rad), sin(wind_rad)];
    
     % Adjust waypoints based on wind direction
