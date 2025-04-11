@@ -67,15 +67,18 @@ replanning_module = @replanning_module;
 % Run the simulation
 k = 1;
 for i = 1:dt:time_span(end)
-    % Get the current waypoint
-    waypoint = waypoints(waypoint_counter, :);
+    % Adjust waypoints dynamically based on the replanning module
+    wind_direction_deg = rad2deg(interp1(wind.t, wind.psi_tw, t, 'linear', 'extrap')); % Wind direction in degrees
+    remaining_waypoints = waypoints(waypoint_counter:end, :); % Remaining waypoints
+    adjusted_path = replanning_module(state(1:2)', remaining_waypoints, wind_direction_deg);
 
-    waypoint = replanning_module(state,waypoint,45);
-    
+    % Get the next waypoint (first in the adjusted path)
+    waypoint = adjusted_path(1, :);
+
     % Compute the control input using the waypoint controller
-    % controls = struct('delta_r', dubins_waypoint_controller(state, waypoint));
     controls = struct('delta_r', lqr_controller(state, waypoint, currents.v_cx(k), currents.v_cy(k)));
     k = k + 1;
+
     % Integrate the state using the Dubins boat model
     [~, state] = ode45(@(t, state) dubins_boat_model(t, state, controls, wind, currents), [t t+dt], state);
     state = state(end, :)';
@@ -83,8 +86,8 @@ for i = 1:dt:time_span(end)
     % Append the new state to the trajectory
     trajectory = [trajectory; state'];
 
-    % Check if the boat is within 1 meters of the waypoint
-    if norm(state(1:2) - waypoint') < 0.5 %threshold
+    % Check if the boat is within 0.5 meters of the waypoint
+    if norm(state(1:2) - waypoint') < 0.5 % Threshold
         waypoint_counter = waypoint_counter + 1;
         % If all waypoints are reached, break the loop
         if waypoint_counter > size(waypoints, 1)
