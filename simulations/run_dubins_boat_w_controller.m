@@ -13,7 +13,7 @@ waypoints = [10, 10; 20, 5; 30, 15; 40, 10; 0, 0];
 % wind = struct('a_tw', 1.0, 'psi_tw', pi/4);
 
 % Define initial wind conditions
-initial_wind_speed = 10.0;  % m/s
+initial_wind_speed = 3.0;  % m/s
 initial_wind_direction = 45;  % degrees
 
 % Define time vector for wind simulation
@@ -46,7 +46,7 @@ for i = 1:N
     current_speed = speed_ratio * wind_speeds(i);
 
     % Current direction is wind_direction + angle_offset
-    current_direction = deg2rad(wind_directions(i)) + angle_offset_rad;
+    current_direction = deg2rad(wind_directions(i)) - angle_offset_rad;
 
     % Convert to Cartesian components
     currents.v_cx(i) = current_speed * cos(current_direction);
@@ -192,7 +192,7 @@ if make_gif
             0, 'g', 'LineWidth', 2);
 
         axis equal;
-        axis([0 45 0 20]); % Adjust as needed
+        % axis([0 45 0 20]); % Adjust as needed
         title('Boat Trajectory with Wind and Current');
         xlabel('X Position'); ylabel('Y Position');
         drawnow;
