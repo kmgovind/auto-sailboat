@@ -65,8 +65,8 @@ addpath('controllers');
 replanning_module = @replanning_module;
 
 % Run the simulation
-k = 1;
-for i = 1:dt:time_span(end)
+k = 1; % Initialize integer index
+for t = 1:dt:time_span(end) % Use 't' for time instead of 'i'
     % Adjust waypoints dynamically based on the replanning module
     wind_direction_deg = rad2deg(interp1(wind.t, wind.psi_tw, t, 'linear', 'extrap')); % Wind direction in degrees
     remaining_waypoints = waypoints(waypoint_counter:end, :); % Remaining waypoints
@@ -76,8 +76,9 @@ for i = 1:dt:time_span(end)
     waypoint = adjusted_path(1, :);
 
     % Compute the control input using the waypoint controller
-    controls = struct('delta_r', lqr_controller(state, waypoint, currents.v_cx(k), currents.v_cy(k)));
-    k = k + 1;
+    wind_speed = interp1(wind.t, wind.a_tw, t, 'linear', 'extrap');
+    wind_direction = interp1(wind.t, wind.psi_tw, t, 'linear', 'extrap');
+    controls = struct('delta_r', dubins_waypoint_controller(state, waypoint, currents.v_cx(k), currents.v_cy(k), wind_speed, wind_direction));
 
     % Integrate the state using the Dubins boat model
     [~, state] = ode45(@(t, state) dubins_boat_model(t, state, controls, wind, currents), [t t+dt], state);
@@ -95,8 +96,8 @@ for i = 1:dt:time_span(end)
         end
     end
 
-    % Update time
-    t = t + dt;
+    % Increment the integer index
+    k = k + 1;
 end
 
 results_dir = fullfile(fileparts(mfilename('fullpath')), 'results');
@@ -213,14 +214,38 @@ end
 
 
 % Waypoint-following controller
-function delta_r = dubins_waypoint_controller(state, waypoint)
+function delta_r = dubins_waypoint_controller(state, waypoint, v_cx, v_cy, wind_speed, wind_direction)
     % Extract state variables
-    x = state(1);
-    y = state(2);
-    theta = state(3);
+    x = state(1); % Boat's x position
+    y = state(2); % Boat's y position
+    theta = state(3); % Boat's heading
+    v_boat = state(4); % Boat's speed
+
+    % Compute the desired velocity vector to the waypoint
+    dx = waypoint(1) - x;
+    dy = waypoint(2) - y;
+
+    % Desired velocity vector (ignoring disturbances)
+    desired_vx = dx;
+    desired_vy = dy;
+
+    % Normalize the desired velocity vector
+    desired_speed = sqrt(desired_vx^2 + desired_vy^2);
+    desired_vx = desired_vx / desired_speed;
+    desired_vy = desired_vy / desired_speed;
+
+    % Compensate for currents
+    adjusted_vx = desired_vx - v_cx / v_boat;
+    adjusted_vy = desired_vy - v_cy / v_boat;
+
+    % Compensate for wind (optional, if wind affects heading significantly)
+    apparent_wind_vx = wind_speed * cos(wind_direction) - v_boat * cos(theta);
+    apparent_wind_vy = wind_speed * sin(wind_direction) - v_boat * sin(theta);
+    adjusted_vx = adjusted_vx - apparent_wind_vx / v_boat;
+    adjusted_vy = adjusted_vy - apparent_wind_vy / v_boat;
 
     % Compute the desired heading
-    desired_heading = atan2(waypoint(2) - y, waypoint(1) - x);
+    desired_heading = atan2(adjusted_vy, adjusted_vx);
 
     % Compute the heading error
     heading_error = desired_heading - theta;
@@ -228,7 +253,10 @@ function delta_r = dubins_waypoint_controller(state, waypoint)
     % Normalize the heading error to the range [-pi, pi]
     heading_error = atan2(sin(heading_error), cos(heading_error));
 
-    % Simple proportional controller for the rudder angle
-    k_p = 1.0;
+    % Proportional controller for the rudder angle
+    k_p = 1.5; % Gain (tune this value)
     delta_r = k_p * heading_error;
+
+    % Limit the rudder angle to a realistic range (e.g., [-30°, 30°])
+    delta_r = max(min(delta_r, deg2rad(30)), deg2rad(-30));
 end
