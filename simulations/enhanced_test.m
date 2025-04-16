@@ -3,19 +3,35 @@
 clear; clc; close all;
 
 % Define simulation parameters
-time_span = [0 500]; % Total simulation time
+time_span = [0 10000]; % Total simulation time
 dt = 0.1; % Time step
 initial_conditions = [0; 0; 0]; % [x; y; theta]
 N = round(diff(time_span) / dt); % Number of steps
 
 % Define waypoints (end at initial point to return)
-waypoints = [10 10; 20 5; 30 15; 40 10];
+% waypoints = [10 10; 20 5; 30 15; 40 10];
+% waypoints = [
+
+%         %  0  -100
+
+%         %  0     0
+
+%         -100 -400
+
+%          -50 -600
+
+%         -100 -200
+
+%         -150  100
+
+%     ];
+waypoints = [10 10; 20 5; -30 50; 40 10; -50 20; 100 0; 150 15];
 waypoint_index = 1;
 goal = waypoints(waypoint_index, :)';
 
 % Define wind simulation
-initial_wind_speed = 3.0;
-initial_wind_direction = 45; % deg
+initial_wind_speed = 1.5;
+initial_wind_direction = 30; % deg
 wind_time = linspace(time_span(1), time_span(2), N);
 wind_speeds = zeros(size(wind_time));
 wind_directions = zeros(size(wind_time));
@@ -47,6 +63,8 @@ state_hist = zeros(3, N); % [x; y; theta]
 
 % Main simulation loop
 goal_tolerance = 2; % How close is "close enough" to switch waypoints
+max_attempt_time = 250; % Maximum time (in seconds) to attempt reaching a waypoint
+attempt_start_time = 0; % Track time spent attempting the current waypoint
 
 for k = 1:N
     t = (k-1)*dt;
@@ -61,12 +79,28 @@ for k = 1:N
     % Check proximity to goal and switch to next waypoint
     dist_to_goal = norm([x; y] - goal);
     if dist_to_goal < goal_tolerance
+        % Successfully reached the waypoint
         waypoint_index = waypoint_index + 1;
-        if waypoint_index > size(waypoints,1)
-           state_hist = state_hist(:, 1:k-1);
-           break;
+        if waypoint_index > size(waypoints, 1)
+            state_hist = state_hist(:, 1:k-1);
+            disp('All waypoints reached.');
+            break;
         end
         goal = waypoints(waypoint_index, :)';
+        disp(['Switching to next waypoint: ', num2str(goal')]);
+        attempt_start_time = t; % Reset attempt time for the new waypoint
+    elseif t - attempt_start_time > max_attempt_time
+        % Skip the waypoint if it is unreachable
+        disp(['Skipping unreachable waypoint: ', num2str(goal')]);
+        waypoint_index = waypoint_index + 1;
+        if waypoint_index > size(waypoints, 1)
+            state_hist = state_hist(:, 1:k-1);
+            disp('All waypoints reached.');
+            break;
+        end
+        goal = waypoints(waypoint_index, :)';
+        disp(['Switching to next waypoint: ', num2str(goal')]);
+        attempt_start_time = t; % Reset attempt time for the new waypoint
     end
     
     % Controller
@@ -118,41 +152,41 @@ ylabel('Current Speed (m/s)');
 grid on;
 saveas(gcf, fullfile(results_dir, 'wind_and_currents.png'));
 
-% Animate the boat path and save as GIF
-figure;
-hold on;
-plot(waypoints(:,1), waypoints(:,2), 'ro--', 'LineWidth', 1.5);
-plot(state_hist(1,1), state_hist(2,1), 'go', 'MarkerSize', 10, 'MarkerFaceColor', 'g');
-trajectory_line = plot(state_hist(1,1), state_hist(2,1), 'b-', 'LineWidth', 2);
-boat_marker = plot(state_hist(1,1), state_hist(2,1), 'ko', 'MarkerSize', 8, 'MarkerFaceColor', 'k');
-title('Sailboat Path Animation');
-xlabel('X'); ylabel('Y'); grid on; axis equal;
-legend('Waypoints', 'Start', 'Trajectory', 'Boat');
+% % Animate the boat path and save as GIF
+% figure;
+% hold on;
+% plot(waypoints(:,1), waypoints(:,2), 'ro--', 'LineWidth', 1.5);
+% plot(state_hist(1,1), state_hist(2,1), 'go', 'MarkerSize', 10, 'MarkerFaceColor', 'g');
+% trajectory_line = plot(state_hist(1,1), state_hist(2,1), 'b-', 'LineWidth', 2);
+% boat_marker = plot(state_hist(1,1), state_hist(2,1), 'ko', 'MarkerSize', 8, 'MarkerFaceColor', 'k');
+% title('Sailboat Path Animation');
+% xlabel('X'); ylabel('Y'); grid on; axis equal;
+% legend('Waypoints', 'Start', 'Trajectory', 'Boat');
 
-% Initialize GIF
-gif_filename = fullfile(results_dir, 'sailboat_animation.gif');
-frame = getframe(gcf);
-im = frame2im(frame);
-[imind, cm] = rgb2ind(im, 256);
-imwrite(imind, cm, gif_filename, 'gif', 'Loopcount', inf, 'DelayTime', 0.1);
+% % Initialize GIF
+% gif_filename = fullfile(results_dir, 'sailboat_animation.gif');
+% frame = getframe(gcf);
+% im = frame2im(frame);
+% [imind, cm] = rgb2ind(im, 256);
+% imwrite(imind, cm, gif_filename, 'gif', 'Loopcount', inf, 'DelayTime', 0.1);
 
-% Update animation and save frames to GIF
-for k = 1:10:length(state_hist(1,:))
-    set(trajectory_line, 'XData', state_hist(1,1:k), 'YData', state_hist(2,1:k));
-    set(boat_marker, 'XData', state_hist(1,k), 'YData', state_hist(2,k));
-    pause(0.1);
+% % Update animation and save frames to GIF
+% for k = 1:10:length(state_hist(1,:))
+%     set(trajectory_line, 'XData', state_hist(1,1:k), 'YData', state_hist(2,1:k));
+%     set(boat_marker, 'XData', state_hist(1,k), 'YData', state_hist(2,k));
+%     pause(0.1);
     
-    % Capture frame and append to GIF
-    frame = getframe(gcf);
-    im = frame2im(frame);
-    [imind, cm] = rgb2ind(im, 256);
-    imwrite(imind, cm, gif_filename, 'gif', 'WriteMode', 'append', 'DelayTime', 0.1);
-end
+%     % Capture frame and append to GIF
+%     frame = getframe(gcf);
+%     im = frame2im(frame);
+%     [imind, cm] = rgb2ind(im, 256);
+%     imwrite(imind, cm, gif_filename, 'gif', 'WriteMode', 'append', 'DelayTime', 0.1);
+% end
 
 % --- Controller Function ---
 function u = sailboat_controller_v2(x, y, theta, x_goal, y_goal, wind)
-    Kp = 1.5;
-    no_go_angle = deg2rad(45);
+    Kp = 3;
+    no_go_angle = deg2rad(5);
     
     goal_vec = [x_goal - x; y_goal - y];
     theta_goal = atan2(goal_vec(2), goal_vec(1));
@@ -161,6 +195,9 @@ function u = sailboat_controller_v2(x, y, theta, x_goal, y_goal, wind)
     angle_to_wind = wrapToPi(theta_goal - wind_dir);
     
     if abs(angle_to_wind) < no_go_angle
+        % disp('Tacking!');
+        % disp("Goal: " + [x_goal, y_goal]);
+        % disp("Wind: " + wind);
         tack_sign = sign(sin(theta - wind_dir));
         theta_desired = wrapToPi(wind_dir + tack_sign * no_go_angle * 1.3);
     else
