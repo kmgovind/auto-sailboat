@@ -152,6 +152,80 @@ ylabel('Current Speed (m/s)');
 grid on;
 saveas(gcf, fullfile(results_dir, 'wind_and_currents.png'));
 
+% Plot and save rudder and sail deflection angles
+rudder_angles = zeros(1, N);
+sail_angles = zeros(1, N);
+
+for k = 1:N
+    t = (k-1)*dt;
+    wind_speed = interp1(wind.t, wind.a_tw, t);
+    wind_dir = interp1(wind.t, wind.psi_tw, t);
+    wind_vector = wind_speed * [cos(wind_dir); sin(wind_dir)];
+    goal = waypoints(min(waypoint_index, size(waypoints, 1)), :)';
+    [rudder_angles(k), sail_angles(k)] = sailboat_deflection_angles(x, y, theta, goal(1), goal(2), wind_vector);
+end
+
+figure;
+subplot(2, 1, 1);
+plot((0:N-1)*dt, rudder_angles);
+title('Rudder Deflection Angle Over Time');
+xlabel('Time (s)');
+ylabel('Rudder Angle (rad)');
+grid on;
+
+subplot(2, 1, 2);
+plot((0:N-1)*dt, sail_angles);
+title('Sail Deflection Angle Over Time');
+xlabel('Time (s)');
+ylabel('Sail Angle (rad)');
+grid on;
+
+saveas(gcf, fullfile(results_dir, 'rudder_and_sail_angles.png'));
+
+
+
+% Smooth and save control signals
+rudder_angles_smooth = smoothdata(rudder_angles, 'movmean', 10);
+sail_angles_smooth = smoothdata(sail_angles, 'movmean', 10);
+
+% Save control signals to file
+control_signals_file = fullfile(results_dir, 'control_signals.mat');
+save(control_signals_file, 'rudder_angles_smooth', 'sail_angles_smooth', 'dt');
+
+% Plot smoothed control signals
+figure;
+subplot(2, 1, 1);
+plot((0:N-1)*dt, rudder_angles_smooth, 'r-', 'LineWidth', 1.5);
+title('Smoothed Rudder Deflection Angle Over Time');
+xlabel('Time (s)');
+ylabel('Rudder Angle (rad)');
+grid on;
+
+subplot(2, 1, 2);
+plot((0:N-1)*dt, sail_angles_smooth, 'b-', 'LineWidth', 1.5);
+title('Smoothed Sail Deflection Angle Over Time');
+xlabel('Time (s)');
+ylabel('Sail Angle (rad)');
+grid on;
+
+saveas(gcf, fullfile(results_dir, 'smoothed_control_signals.png'));
+
+% --- Deflection Angles Function ---
+function [rudder_angle, sail_angle] = sailboat_deflection_angles(x, y, theta, x_goal, y_goal, wind)
+    % Example logic for rudder and sail angles
+    goal_vec = [x_goal - x; y_goal - y];
+    theta_goal = atan2(goal_vec(2), goal_vec(1));
+    wind_dir = atan2(wind(2), wind(1));
+    
+    % Rudder angle (proportional control to align heading with goal)
+    Kp_rudder = 2;
+    rudder_angle = Kp_rudder * wrapToPi(theta_goal - theta);
+    
+    % Sail angle (adjust based on relative wind direction)
+    rel_wind_dir = wrapToPi(wind_dir - theta);
+    sail_angle = max(0, pi/4 * cos(rel_wind_dir)); % Example: max sail angle is pi/4
+end
+
 % % Animate the boat path and save as GIF
 % figure;
 % hold on;
