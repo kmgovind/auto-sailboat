@@ -210,52 +210,36 @@ grid on;
 
 saveas(gcf, fullfile(results_dir, 'smoothed_control_signals.png'));
 
-% --- Deflection Angles Function ---
-function [rudder_angle, sail_angle] = sailboat_deflection_angles(x, y, theta, x_goal, y_goal, wind)
-    % Example logic for rudder and sail angles
-    goal_vec = [x_goal - x; y_goal - y];
-    theta_goal = atan2(goal_vec(2), goal_vec(1));
-    wind_dir = atan2(wind(2), wind(1));
+% Animate the boat path and save as GIF
+figure;
+hold on;
+plot(waypoints(:,1), waypoints(:,2), 'ro--', 'LineWidth', 1.5);
+plot(state_hist(1,1), state_hist(2,1), 'go', 'MarkerSize', 10, 'MarkerFaceColor', 'g');
+trajectory_line = plot(state_hist(1,1), state_hist(2,1), 'b-', 'LineWidth', 2);
+boat_marker = plot(state_hist(1,1), state_hist(2,1), 'ko', 'MarkerSize', 8, 'MarkerFaceColor', 'k');
+title('Sailboat Path Animation');
+xlabel('X'); ylabel('Y'); grid on; axis equal;
+legend('Waypoints', 'Start', 'Trajectory', 'Boat');
+
+% Initialize GIF
+gif_filename = fullfile(results_dir, 'sailboat_animation.gif');
+frame = getframe(gcf);
+im = frame2im(frame);
+[imind, cm] = rgb2ind(im, 256);
+imwrite(imind, cm, gif_filename, 'gif', 'Loopcount', inf, 'DelayTime', 0.1);
+
+% Update animation and save frames to GIF
+for k = 1:10:length(state_hist(1,:))
+    set(trajectory_line, 'XData', state_hist(1,1:k), 'YData', state_hist(2,1:k));
+    set(boat_marker, 'XData', state_hist(1,k), 'YData', state_hist(2,k));
+    pause(0.1);
     
-    % Rudder angle (proportional control to align heading with goal)
-    Kp_rudder = 2;
-    rudder_angle = Kp_rudder * wrapToPi(theta_goal - theta);
-    
-    % Sail angle (adjust based on relative wind direction)
-    rel_wind_dir = wrapToPi(wind_dir - theta);
-    sail_angle = max(0, pi/4 * cos(rel_wind_dir)); % Example: max sail angle is pi/4
+    % Capture frame and append to GIF
+    frame = getframe(gcf);
+    im = frame2im(frame);
+    [imind, cm] = rgb2ind(im, 256);
+    imwrite(imind, cm, gif_filename, 'gif', 'WriteMode', 'append', 'DelayTime', 0.1);
 end
-
-% % Animate the boat path and save as GIF
-% figure;
-% hold on;
-% plot(waypoints(:,1), waypoints(:,2), 'ro--', 'LineWidth', 1.5);
-% plot(state_hist(1,1), state_hist(2,1), 'go', 'MarkerSize', 10, 'MarkerFaceColor', 'g');
-% trajectory_line = plot(state_hist(1,1), state_hist(2,1), 'b-', 'LineWidth', 2);
-% boat_marker = plot(state_hist(1,1), state_hist(2,1), 'ko', 'MarkerSize', 8, 'MarkerFaceColor', 'k');
-% title('Sailboat Path Animation');
-% xlabel('X'); ylabel('Y'); grid on; axis equal;
-% legend('Waypoints', 'Start', 'Trajectory', 'Boat');
-
-% % Initialize GIF
-% gif_filename = fullfile(results_dir, 'sailboat_animation.gif');
-% frame = getframe(gcf);
-% im = frame2im(frame);
-% [imind, cm] = rgb2ind(im, 256);
-% imwrite(imind, cm, gif_filename, 'gif', 'Loopcount', inf, 'DelayTime', 0.1);
-
-% % Update animation and save frames to GIF
-% for k = 1:10:length(state_hist(1,:))
-%     set(trajectory_line, 'XData', state_hist(1,1:k), 'YData', state_hist(2,1:k));
-%     set(boat_marker, 'XData', state_hist(1,k), 'YData', state_hist(2,k));
-%     pause(0.1);
-    
-%     % Capture frame and append to GIF
-%     frame = getframe(gcf);
-%     im = frame2im(frame);
-%     [imind, cm] = rgb2ind(im, 256);
-%     imwrite(imind, cm, gif_filename, 'gif', 'WriteMode', 'append', 'DelayTime', 0.1);
-% end
 
 % --- Controller Function ---
 function u = sailboat_controller_v2(x, y, theta, x_goal, y_goal, wind)
@@ -290,3 +274,18 @@ end
 % end
 
 
+% --- Deflection Angles Function ---
+function [rudder_angle, sail_angle] = sailboat_deflection_angles(x, y, theta, x_goal, y_goal, wind)
+    % Example logic for rudder and sail angles
+    goal_vec = [x_goal - x; y_goal - y];
+    theta_goal = atan2(goal_vec(2), goal_vec(1));
+    wind_dir = atan2(wind(2), wind(1));
+    
+    % Rudder angle (proportional control to align heading with goal)
+    Kp_rudder = 2;
+    rudder_angle = Kp_rudder * wrapToPi(theta_goal - theta);
+    
+    % Sail angle (adjust based on relative wind direction)
+    rel_wind_dir = wrapToPi(wind_dir - theta);
+    sail_angle = max(0, pi/4 * cos(rel_wind_dir)); % Example: max sail angle is pi/4
+end
